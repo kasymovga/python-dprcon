@@ -35,10 +35,10 @@ responseRegexp = re.compile("\377\377\377n(.*)", re.S)
 
 class InsecureRCONConnection(object):
 	def __init__(self, host, port, password, connect=False, bufsize=1024):
-		self.__host = host
-		self.__port = port
-		self.__pwd  = password
-		self.__sock = None
+		self._host = host
+		self._port = port
+		self._pwd  = password
+		self._sock = None
 		self.bufsize = bufsize
 		
 		if connect:
@@ -52,24 +52,24 @@ class InsecureRCONConnection(object):
 	
 	@requireDisconnected
 	def connect(self):
-		self.__sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self.__sock.connect((self.__host, self.__port))
+		self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self._sock.connect((self._host, self._port))
 
 	def isConnected(self):
-		return self.__sock is not None
+		return self._sock is not None
 	
 	@requireConnected
 	def disconnect(self):
-		self.__sock.close()
-		self.__sock = None
-		self.__addr = None
+		self._sock.close()
+		self._sock = None
+		self._addr = None
 	
 	@requireConnected
 	def getLocalAddress(self):
-		return "%s:%i" % self.__sock.getsockname()
+		return "%s:%i" % self._sock.getsockname()
 	
 	def makeRCONMessage(self, s):
-		return "\377\377\377\377rcon %s %s" %(self.__pwd, s)
+		return "\377\377\377\377rcon %s %s" %(self._pwd, s)
 	
 	def translateRCONResponse(self, s):
 		try:
@@ -79,24 +79,24 @@ class InsecureRCONConnection(object):
 	
 	@requireConnected
 	def send(self, *s):
-		return self.__sock.send('\0'.join([self.makeRCONMessage(a) for a in s]))
+		return self._sock.send('\0'.join([self.makeRCONMessage(a) for a in s]))
 	
 	@requireConnected
 	def read(self, bufsize=None):
 		if bufsize is None:
 			bufsize = self.bufsize
 		
-		return self.translateRCONResponse(self.__sock.recv(1024))
+		return self.translateRCONResponse(self._sock.recv(1024))
 	
 	def getSocket(self):
-		return self.__sock
+		return self._sock
 	
 
 class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 	def makeRCONMessage(self, line):
 		mytime = "%ld.%06d" %(time.time(), random.randrange(1000000))
 		return "\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
-			hmac.new(self.__pwd, "%s %s" % (mytime, line), digestmod=md4.new).digest(),
+			hmac.new(self._pwd, "%s %s" % (mytime, line), digestmod=md4.new).digest(),
 			mytime, line
 		)
 
