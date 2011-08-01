@@ -90,7 +90,7 @@ class InsecureRCONConnection(object):
 		if bufsize is None:
 			bufsize = self.bufsize
 		
-		return self.translateRCONResponse(self._sock.recv(1024))
+		return self.translateRCONResponse(self._sock.recv(bufsize))
 	
 	def getSocket(self):
 		return self._sock
