@@ -143,7 +143,6 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
 					self.recvbuf.append(r)
 				else:
 					c = self.translateChallengeResponse(s)
-					print c
 					if c:
 						return c
 		
