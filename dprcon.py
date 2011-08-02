@@ -5,9 +5,6 @@ import socket, re, sys, md4, hmac, random, time, select
 class RCONException(Exception):
 	pass
 
-class RCONTimeoutException(RCONException):
-	pass
-
 class RCONConnectionRequiredException(RCONException):
 	pass
 
