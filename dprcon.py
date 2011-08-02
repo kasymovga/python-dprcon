@@ -5,6 +5,9 @@ import socket, re, sys, md4, hmac, random, time, select
 class RCONException(Exception):
 	pass
 
+class RCONTimeoutException(RCONException):
+	pass
+
 class RCONConnectionRequiredException(RCONException):
 	pass
 
@@ -38,12 +41,14 @@ responseRegexp = re.compile("\377\377\377n(.*)", re.S)
 challengeRegexp = re.compile("\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
 
 class InsecureRCONConnection(object):
-	def __init__(self, host, port, password, connect=False, bufsize=1024):
+	def __init__(self, host, port, password, connect=False, bufsize=32768, timeout=None):
 		self._host = host
 		self._port = port
 		self._pwd  = password
 		self._sock = None
-		self.bufsize = bufsize
+		
+		self.setBufsize(bufsize)
+		self.setTimeout(timeout)
 		
 		if connect:
 			self.connect()
@@ -58,6 +63,7 @@ class InsecureRCONConnection(object):
 	def connect(self):
 		self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self._sock.connect((self._host, self._port))
+		self.setTimeout(self.timeout)
 
 	def isConnected(self):
 		return self._sock is not None
@@ -97,7 +103,27 @@ class InsecureRCONConnection(object):
 	
 	def fileno(self):
 		return self._sock.fileno()
+
+	def getTimeout(self):
+		if not self.isConnected():
+			return self.timeout
+		
+		return self._sock.gettimeout()
+		
+	def setTimeout(self, val):
+		if not self.isConnected():
+			self.timeout = val
+			return self.timeout
+		
+		self._sock.settimeout(val)
+		return self._sock.gettimeout()
 	
+	def getBufsize(self):
+		return self.bufsize
+	
+	def setBufsize(self, val):
+		self.bufsize = int(val)
+		return self.bufsize
 
 class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 	def makeRCONMessage(self, line):
@@ -108,10 +134,10 @@ class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 		)
 
 class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
-	def __init__(self, host, port, password, connect=False, bufsize=1024, timeout=3):
-		self.challengeTimeout = timeout
-		self.recvbuf = []
+	def __init__(self, host, port, password, connect=False, bufsize=1024, timeout=10, challengeTimeout=10):
 		self._challenge = ""
+		self.setChallengeTimeout(challengeTimeout)
+		self.recvbuf = []
 		
 		return super(ChallengeBasedSecureRCONConnection, self).__init__(host, port, password, connect, bufsize)
 	
@@ -136,7 +162,7 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
 		timeouttime = time.time() + self.challengeTimeout
 		
 		while time.time() < timeouttime:
-			r, w, x = select.select([self._sock], [], [])
+			r = select.select([self._sock], [], [], self.challengeTimeout)[0]
 			
 			if self._sock in r:
 				s = self._sock.recv(self.bufsize)
@@ -155,6 +181,13 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
 		if self.recvbuf:
 			return self.recvbuf.pop(0)
 		return super(ChallengeBasedSecureRCONConnection, self).read(bufsize)
+	
+	def getChallengeTimeout(self):
+		return self.challengeTimeout
+	
+	def setChallengeTimeout(self, val):
+		self.challengeTimeout = float(val)
+		return self.challengeTimeout
 
 if __name__ == "__main__":
 	host = raw_input("Server: ")
@@ -173,22 +206,15 @@ if __name__ == "__main__":
 		quit(0)
 
 	print "Connected!"
-	
-	rcon.getSocket().settimeout(1)
 	print "Local address:", rcon.getLocalAddress()
 	
-	while True:
-		rcon.send(raw_input("Command: "))
-		print "Response follows: "
-		
-		def getresponse():
-			try:
-				return rcon.read()
-			except socket.error:
-				return None
-		
-		r = getresponse()
-		while r is not None:
-			sys.stdout.write(r)
-			r = getresponse()
+	rcon.send("status")
 	
+	while True:
+		r = select.select([rcon, sys.stdin], [], [])[0]
+		
+		if rcon in r:
+			sys.stdout.write("\n" + "".join(["> %s\n" % i for i in rcon.read().split('\n') if i]))
+		
+		if sys.stdin in r:
+			rcon.send(sys.stdin.readline()[:-1])
