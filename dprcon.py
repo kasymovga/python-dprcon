@@ -95,6 +95,9 @@ class InsecureRCONConnection(object):
 	def getSocket(self):
 		return self._sock
 	
+	def fileno(self):
+		return self._sock.fileno()
+	
 
 class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 	def makeRCONMessage(self, line):
