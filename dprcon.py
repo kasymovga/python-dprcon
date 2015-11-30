@@ -131,7 +131,7 @@ class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 	def makeRCONMessage(self, line):
 		mytime = "%ld.%06d" %(time.time(), random.randrange(1000000))
 		return "\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
-			hmac.new(self._pwd, "%s %s" % (mytime, line), digestmod=md4.new).digest(),
+			hmac.new(self._pwd, "%s %s" % (mytime, line.decode('utf-8')), digestmod=md4.new).digest(),
 			mytime, line
 		)
 
@@ -149,7 +149,7 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
 	
 	def makeRCONMessage(self, line):
 		return "\377\377\377\377srcon HMAC-MD4 CHALLENGE %s %s %s" %(
-			hmac.new(self._pwd, "%s %s" % (self._challenge, line), digestmod=md4.new).digest(),
+			hmac.new(self._pwd, "%s %s" % (self._challenge, line.decode('utf-8')), digestmod=md4.new).digest(),
 			self._challenge, line
 		)
 	
