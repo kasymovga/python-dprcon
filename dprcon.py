@@ -1,12 +1,17 @@
 #!/usr/bin/env python2
 
-import socket, re, sys, md4, hmac, random, time, select
+import socket, re, sys, hashlib, hmac, random, time, select
 
 responseRegexp = re.compile("\377\377\377n(.*)", re.S)
 challengeRegexp = re.compile("\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
 
 defaultBufferSize = 32768
 defaultTimeout = 10
+
+try:
+    md4 = hashlib.md4
+except AttributeError:
+    md4 = lambda: hashlib.new('md4')
 
 class RCONException(Exception):
 	pass
@@ -131,7 +136,7 @@ class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 	def makeRCONMessage(self, line):
 		mytime = "%ld.%06d" %(time.time(), random.randrange(1000000))
 		return "\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
-			hmac.new(self._pwd, "%s %s" % (mytime, line.decode('utf-8')), digestmod=md4.new).digest(),
+			hmac.new(self._pwd, "%s %s" % (mytime, line.decode('utf-8')), digestmod=md4).digest(),
 			mytime, line
 		)
 
@@ -149,7 +154,7 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
 	
 	def makeRCONMessage(self, line):
 		return "\377\377\377\377srcon HMAC-MD4 CHALLENGE %s %s %s" %(
-			hmac.new(self._pwd, "%s %s" % (self._challenge, line.decode('utf-8')), digestmod=md4.new).digest(),
+			hmac.new(self._pwd, "%s %s" % (self._challenge, line.decode('utf-8')), digestmod=md4).digest(),
 			self._challenge, line
 		)
 	
