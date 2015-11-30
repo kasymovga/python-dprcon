@@ -2,6 +2,12 @@
 
 import socket, re, sys, md4, hmac, random, time, select
 
+responseRegexp = re.compile("\377\377\377n(.*)", re.S)
+challengeRegexp = re.compile("\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
+
+defaultBufferSize = 32768
+defaultTimeout = 10
+
 class RCONException(Exception):
 	pass
 
@@ -22,6 +28,7 @@ def requireConnected(f):
 		return f(self, *args, **kwargs)
 	
 	wrapper.__doc__ = f.__doc__
+	wrapper.__name__ = f.__name__
 	return wrapper
 
 def requireDisconnected(f):
@@ -32,13 +39,11 @@ def requireDisconnected(f):
 		return f(self, *args, **kwargs)
 	
 	wrapper.__doc__ = f.__doc__
+	wrapper.__name__ = f.__name__
 	return wrapper 
 
-responseRegexp = re.compile("\377\377\377n(.*)", re.S)
-challengeRegexp = re.compile("\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
-
 class InsecureRCONConnection(object):
-	def __init__(self, host, port, password, connect=False, bufsize=32768, timeout=None):
+	def __init__(self, host, port, password, connect=False, bufsize=defaultBufferSize, timeout=None):
 		self._host = host
 		self._port = port
 		self._pwd  = password
@@ -76,7 +81,7 @@ class InsecureRCONConnection(object):
 		return "%s:%i" % self._sock.getsockname()
 	
 	def makeRCONMessage(self, s):
-		return "\377\377\377\377rcon %s %s" %(self._pwd, s)
+		return "\377\377\377\377rcon %s %s" %(self._pwd, s.decode('utf-8'))
 	
 	def translateRCONResponse(self, s):
 		try:
@@ -131,7 +136,7 @@ class TimeBasedSecureRCONConnection(InsecureRCONConnection):
 		)
 
 class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
-	def __init__(self, host, port, password, connect=False, bufsize=1024, timeout=10, challengeTimeout=10):
+	def __init__(self, host, port, password, connect=False, bufsize=defaultBufferSize, timeout=defaultTimeout, challengeTimeout=defaultTimeout):
 		self._challenge = ""
 		self.setChallengeTimeout(challengeTimeout)
 		self.recvbuf = []
