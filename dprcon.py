@@ -4,8 +4,8 @@ from __future__ import print_function
 
 import socket, re, sys, hashlib, hmac, random, time, select
 
-responseRegexp = re.compile("\377\377\377n(.*)", re.S)
-challengeRegexp = re.compile("\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
+responseRegexp = re.compile(b"\377\377\377n(.*)", re.S)
+challengeRegexp = re.compile(b"\377\377\377\377challenge (.*?)(?:$|\0)", re.S)
 
 defaultBufferSize = 32768
 defaultTimeout = 10
@@ -62,6 +62,9 @@ class InsecureRCONConnection(object):
         if connect:
             self.connect()
     
+    def _send(self, s):
+        return self._sock.send(s)
+
     def __del__(self):
         try:
             self.disconnect()
@@ -88,7 +91,7 @@ class InsecureRCONConnection(object):
         return "%s:%i" % self._sock.getsockname()
     
     def makeRCONMessage(self, s):
-        return "\377\377\377\377rcon %s %s" %(self._pwd, s.encode('utf-8'))
+        return b"\377\377\377\377rcon %s %s" %(self._pwd.encode('utf-8'), s.encode('utf-8'))
     
     def translateRCONResponse(self, s):
         try:
@@ -98,7 +101,7 @@ class InsecureRCONConnection(object):
     
     @requireConnected
     def send(self, *s):
-        return self._sock.send('\0'.join([self.makeRCONMessage(a) for a in s]))
+        return self._send(b'\0'.join([self.makeRCONMessage(a) for a in s]))
     
     @requireConnected
     def read(self, bufsize=None):
@@ -136,11 +139,10 @@ class InsecureRCONConnection(object):
 
 class TimeBasedSecureRCONConnection(InsecureRCONConnection):
     def makeRCONMessage(self, line):
-        line = line.encode('utf-8')
         mytime = "%ld.%06d" %(time.time(), random.randrange(1000000))
-        return "\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
-            hmac.new(self._pwd, "%s %s" % (mytime, line), digestmod=md4).digest(),
-            mytime, line
+        return b"\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
+            hmac.new(self._pwd, "%s %s" % (mytime, line), digestmod=md4).digest().encode('utf-8'),
+            mytime.encode('utf-8'), line.encode('utf-8')
         )
 
 class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
@@ -156,10 +158,9 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
         return super(ChallengeBasedSecureRCONConnection, self).send(*s)
     
     def makeRCONMessage(self, line):
-        line = line.encode('utf-8')
-        return "\377\377\377\377srcon HMAC-MD4 CHALLENGE %s %s %s" %(
-            hmac.new(self._pwd, "%s %s" % (self._challenge, line), digestmod=md4).digest(),
-            self._challenge, line
+        return b"\377\377\377\377srcon HMAC-MD4 CHALLENGE %s %s %s" %(
+            hmac.new(self._pwd, "%s %s" % (self._challenge, line), digestmod=md4).digest().encode('utf-8'),
+            self._challenge, line.encode('utf-8')
         )
     
     def translateChallengeResponse(self, s):
@@ -169,7 +170,7 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
             return ""
         
     def _recvchallenge(self):
-        self._sock.send("\377\377\377\377getchallenge");
+        self._send(b"\377\377\377\377getchallenge");
         timeouttime = time.time() + self.challengeTimeout
         
         while time.time() < timeouttime:
@@ -230,7 +231,8 @@ if __name__ == "__main__":
         r = select.select([rcon, sys.stdin], [], [])[0]
         
         if rcon in r:
-            sys.stdout.write("\n" + "".join(["> %s\n" % i for i in rcon.read().split('\n') if i]))
+            s = b"\n" + b"".join([b"> %s\n" % i for i in rcon.read().split(b'\n') if i])
+            sys.stdout.write(s.decode('utf-8'))
         
         if sys.stdin in r:
             rcon.send(sys.stdin.readline()[:-1])
