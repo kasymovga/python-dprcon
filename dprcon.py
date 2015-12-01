@@ -50,7 +50,7 @@ def requireDisconnected(f):
     return wrapper 
 
 class InsecureRCONConnection(object):
-    def __init__(self, host, port, password, connect=False, bufsize=defaultBufferSize, timeout=None):
+    def __init__(self, host, port, password, connect=False, bufsize=defaultBufferSize, timeout=defaultTimeout):
         self._host = host
         self._port = port
         self._pwd  = password
