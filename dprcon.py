@@ -1,4 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import socket, re, sys, hashlib, hmac, random, time, select
 
@@ -199,10 +201,15 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
         return self.challengeTimeout
 
 if __name__ == "__main__":
-    host = raw_input("Server: ")
-    port = int(raw_input("Port: "))
-    sec  = int(raw_input("Security (as in rcon_secure): "))
-    pwd  = raw_input("Password: ")
+    try:
+        input = raw_input
+    except NameError:
+        pass
+
+    host = input("Server: ")
+    port = int(input("Port: "))
+    sec  = int(input("Security (as in rcon_secure): "))
+    pwd  = input("Password: ")
     
     try:
         rcon = {
@@ -211,11 +218,11 @@ if __name__ == "__main__":
             2:  ChallengeBasedSecureRCONConnection
         }[sec](host, port, pwd, connect=True)
     except KeyError as e:
-        print "Invalid security value:", sec
+        print("Invalid security value:", sec)
         quit(0)
 
-    print "Connected!"
-    print "Local address:", rcon.getLocalAddress()
+    print("Connected!")
+    print("Local address:", rcon.getLocalAddress())
     
     rcon.send("status")
     
