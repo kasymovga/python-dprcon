@@ -49,11 +49,22 @@ def requireDisconnected(f):
     wrapper.__name__ = f.__name__
     return wrapper 
 
+def ensure_bytes(s):
+    try: # Python 2
+        if isinstance(s, unicode):
+            s = s.encode('utf-8')
+    except NameError: # Python 3
+        if isinstance(s, str):
+            s = s.encode('utf-8')
+
+    assert isinstance(s, bytes)
+    return s
+
 class InsecureRCONConnection(object):
     def __init__(self, host, port, password, connect=False, bufsize=defaultBufferSize, timeout=defaultTimeout):
         self._host = host
         self._port = port
-        self._pwd  = password
+        self._pwd  = ensure_bytes(password)
         self._sock = None
         
         self.setBufsize(bufsize)
@@ -91,7 +102,7 @@ class InsecureRCONConnection(object):
         return "%s:%i" % self._sock.getsockname()
     
     def makeRCONMessage(self, s):
-        return b"\377\377\377\377rcon %s %s" %(self._pwd.encode('utf-8'), s.encode('utf-8'))
+        return b"\377\377\377\377rcon %s %s" %(self._pwd, ensure_bytes(s))
     
     def translateRCONResponse(self, s):
         try:
@@ -139,10 +150,12 @@ class InsecureRCONConnection(object):
 
 class TimeBasedSecureRCONConnection(InsecureRCONConnection):
     def makeRCONMessage(self, line):
-        mytime = "%ld.%06d" %(time.time(), random.randrange(1000000))
+        line = ensure_bytes(line)
+        mytime = b"%ld.%06d" % (time.time(), random.randrange(1000000))
+
         return b"\377\377\377\377srcon HMAC-MD4 TIME %s %s %s" %(
-            hmac.new(self._pwd, "%s %s" % (mytime, line), digestmod=md4).digest(),
-            mytime.encode('utf-8'), line.encode('utf-8')
+            hmac.new(self._pwd, b"%s %s" % (mytime, line), digestmod=md4).digest(),
+            mytime, line
         )
 
 class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
@@ -158,9 +171,10 @@ class ChallengeBasedSecureRCONConnection(InsecureRCONConnection):
         return super(ChallengeBasedSecureRCONConnection, self).send(*s)
     
     def makeRCONMessage(self, line):
+        line = ensure_bytes(line)
         return b"\377\377\377\377srcon HMAC-MD4 CHALLENGE %s %s %s" %(
-            hmac.new(self._pwd, "%s %s" % (self._challenge, line), digestmod=md4).digest(),
-            self._challenge, line.encode('utf-8')
+            hmac.new(self._pwd, b"%s %s" % (self._challenge, line), digestmod=md4).digest(),
+            self._challenge, line
         )
     
     def translateChallengeResponse(self, s):
