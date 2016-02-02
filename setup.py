@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-_version = '1.1'
+_version = '1.1.1'
 
 setup(
     name='dprcon',
