@@ -2,11 +2,16 @@
 
 from distutils.core import setup
 
+_version = '1.1'
+
 setup(
-		name='dprcon',
-		version='1.0',
-		description='A simple DarkPlaces RCON client',
-		author='Akari`',
-		author_email='hetors.email@gmail.com',
-		py_modules = ['dprcon']
+    name='dprcon',
+    version=_version,
+    description='A simple DarkPlaces RCON client library',
+    author='Andrew "Akari" Alexeyew',
+    author_email='akari@alienslab.net',
+    py_modules=['dprcon'],
+    url='https://github.com/nexAkari/python-dprcon',
+    download_url='https://github.com/nexAkari/python-dprcon/tarball/%s' % _version,
+    keywords=['networking', 'rcon', 'remote', 'admin', 'darkplaces', 'quake', 'rocketminsta', 'nexuiz', 'game'],
 )
