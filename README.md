@@ -1,4 +1,4 @@
-To install the module globally, run this as root: ./setup.py install
+To install the module globally, run this as root: ./setup.py install  
 And to try it out, run the Python interpreter and type this:  
 
 ```
